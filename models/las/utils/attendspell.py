@@ -54,30 +54,52 @@ class AttendAndSpell(torch.nn.Module):
 
         Ouput: The sequence of hidden states from the output of the attention lstm, shape: (bs, S, hidden_size)
     """
-    def __init__(self, hidden_size, embedding_dim):
+    def __init__(self, hidden_size, embedding_dim, vocabulary_size):
         super(AttendAndSpell, self).__init__()
         
         self.att_rnn = torch.nn.LSTMCell(hidden_size + embedding_dim, hidden_size)
+        self.rnns = torch.nn.ModuleList(
+                      [torch.nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers)]
+                     )
+
 
         self.attention = AttentionContext(hidden_size)
         self.hidden_size = hidden_size
+        self.mlp = torch.nn.Sequential(
+                        torch.nn.Linear(self.hidden_size*2, self.hidden_size),
+                        torch.nn.ReLu(),
+                        torch.nn.Linear(self.hidden_size, vocabulary_size))
 
     def zero_rnn(self, shape):
        return torch.zeros(shape, device='cuda:0'), torch.zeros(shape, device='cuda:0') 
+
+    def init_out(self):
+        h_t = [self.zero_rnn(bs, self.hidden_size))[0]]
+        c_t = [self.zero_rnn((bs, self.hidden_size))[1]]
+        for i in range(len(self.cells)):
+            h, c = self.zero_rnn((bs, self.hidden_size))
+            h_t.append(h)
+            c_t.append(c)
 
     def forward(self, y, encoder_h):
         seq_len = y.shape[1]
         h_i, c_i = self.zero_rnn((y.shape[0], self.hidden_size))
         att_i = h_i
+
+        h_t, c_t = self.init_out()
         
-        h_out = []
-        att_out = []
+        y_out = []
         # over the seq len
         for i in range(seq_len):
             rnn_in = torch.cat((y[:, i, :], att_i), dim=-1)
-            h_i, c_i  = self.att_rnn(rnn_in, (h_i, c_i))
-            att_i = self.attention(h_i, encoder_h)
-            h_out.append(torch.unsqueeze(h_i, dim=1))
-            att_out.append(torch.unqueeze(att_i, dim=1))
+            h_t[0], c_i  = self.att_rnn(rnn_in, (h_i, c_i))
 
-        return torch.hstack(h_out), torch.hstack(att_out)
+            for i, l in enumerate(self.cells, 1):
+                h_t[i], c_t[i] = l(h_t[i-1], (h_t[i], c_t[i]))
+
+            att_i = self.attention(h_t[-1], encoder_h)
+            mpl_in = torch.cat((h_t[-1], att_i))
+            y_pred_i = self.mlp(mlp_in)
+            y_out.append(torch.unsqueeze(y_pred_i, dim=1))
+
+        return torch.hstack(y_out)
