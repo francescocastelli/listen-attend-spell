@@ -2,7 +2,7 @@ import torch
 import torchaudio
 
 class MelSpectrogram(torch.nn.Module):
-    def __init__(self, sr, n_mfcc, dct_type, norm, n_fft, win_len, hop_len,
+    def __init__(self, sr, norm, n_fft, win_len, hop_len,
                  f_min, f_max, pad, n_mels, window_fn, power, normalized):
 
         super(MelSpectrogram, self).__init__()
@@ -16,12 +16,10 @@ class MelSpectrogram(torch.nn.Module):
                                              onesided=True, norm=norm, mel_scale='htk')
     
     def forward(self, audio):
-        audio = torch.squeeze(audio, 1)
-
         melspec = self.melspec(audio)
         # log melspec
         melspec = torch.log(melspec + 1e-6)
         # mean-normalization
-        melspec -= (torch.mean(melspec, axis=1) + 1e-8)
+        melspec -= (torch.mean(melspec, axis=0) + 1e-8)
         
         return melspec
