@@ -4,10 +4,11 @@ import os
 import pandas as pd
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
-    def __init__(self, df, dataset_dir, tokenizer):
+    def __init__(self, df, dataset_dir, tokenizer, frontend):
         self.df = df
         self.dataset_dir = dataset_dir
         self.tokenizer = tokenizer
+        self.frontend = frontend
     
     def __len__(self):
         return len(self.df)
@@ -23,8 +24,24 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         
         audio_path = self.__get_path(sample)
         audio, _ = torchaudio.load(audio_path)
+
+        # compute melspec
+        melspec = self.frontend(audio[0])
+        # shape: (L, n_mels) where L depends on the length in time
+        melspec = torch.t(melspec)
+        # ensure a melspec with even length 
+        if melspec.shape[0] % 2:
+            melspec = torch.nn.functional.pad(melspec, (0, 0, 0, 1))
         
+        # tokenize the target seq
         target = sample['seq']
-        token_seq = self.tokenizer.tokenize(target[:-1])
+        token_seq = torch.tensor(self.tokenizer.tokenize(target[:-1]))
         
-        return {'audio': audio, 'token_seq': token_seq}
+        return {'melspec': melspec, 'token_seq': token_seq}
+
+def create_dataset(text_path, dataset_dir, tokenizer, frontend):
+    df = pd.read_csv(text_path, delimiter=' ', header=None, dtype='object')
+    df.columns = ['speaker_id', 'chapter_id', 'audio_id', 'seq', 'dataset']
+
+    return LibriSpeechDataset(df, dataset_dir, tokenizer, frontend)
+    
