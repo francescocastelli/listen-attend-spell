@@ -54,9 +54,10 @@ class AttendAndSpell(torch.nn.Module):
 
         Ouput: The sequence of hidden states from the output of the attention lstm, shape: (bs, S, hidden_size)
     """
-    def __init__(self, hidden_size, embedding_dim, vocabulary_size):
+    def __init__(self, hidden_size, embedding_dim, vocabulary_size, num_layers):
         super(AttendAndSpell, self).__init__()
         
+        self.vocab_size = vocabulary_size
         self.att_rnn = torch.nn.LSTMCell(hidden_size + embedding_dim, hidden_size)
         self.rnns = torch.nn.ModuleList(
                       [torch.nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers)]
@@ -67,26 +68,31 @@ class AttendAndSpell(torch.nn.Module):
         self.hidden_size = hidden_size
         self.mlp = torch.nn.Sequential(
                         torch.nn.Linear(self.hidden_size*2, self.hidden_size),
-                        torch.nn.ReLu(),
-                        torch.nn.Linear(self.hidden_size, vocabulary_size))
+                        torch.nn.ReLU(),
+                        torch.nn.Linear(self.hidden_size, self.vocab_size))
+
+        self.d = torch.nn.Parameter(torch.empty(0))
 
     def zero_rnn(self, shape):
-       return torch.zeros(shape, device='cuda:0'), torch.zeros(shape, device='cuda:0') 
+       return torch.zeros(shape, device=self.d.device), torch.zeros(shape, device=self.d.device) 
 
-    def init_out(self):
-        h_t = [self.zero_rnn(bs, self.hidden_size))[0]]
-        c_t = [self.zero_rnn((bs, self.hidden_size))[1]]
-        for i in range(len(self.cells)):
-            h, c = self.zero_rnn((bs, self.hidden_size))
+    def init_out(self, shape):
+        h_t = [self.zero_rnn(shape)[0]]
+        c_t = [self.zero_rnn(shape)[1]]
+        for i in range(len(self.rnns)):
+            h, c = self.zero_rnn(shape)
             h_t.append(h)
             c_t.append(c)
 
+        return h_t, c_t
+
     def forward(self, y, encoder_h):
+        bs = y.shape[0]
         seq_len = y.shape[1]
-        h_i, c_i = self.zero_rnn((y.shape[0], self.hidden_size))
+        h_i, c_i = self.zero_rnn((bs, self.hidden_size))
         att_i = h_i
 
-        h_t, c_t = self.init_out()
+        h_t, c_t = self.init_out((bs, self.hidden_size))
         
         y_out = []
         # over the seq len
@@ -94,12 +100,14 @@ class AttendAndSpell(torch.nn.Module):
             rnn_in = torch.cat((y[:, i, :], att_i), dim=-1)
             h_t[0], c_i  = self.att_rnn(rnn_in, (h_i, c_i))
 
-            for i, l in enumerate(self.cells, 1):
+            for i, l in enumerate(self.rnns, 1):
                 h_t[i], c_t[i] = l(h_t[i-1], (h_t[i], c_t[i]))
 
             att_i = self.attention(h_t[-1], encoder_h)
-            mpl_in = torch.cat((h_t[-1], att_i))
+            mlp_in = torch.cat((h_t[-1], att_i), dim=-1)
             y_pred_i = self.mlp(mlp_in)
             y_out.append(torch.unsqueeze(y_pred_i, dim=1))
 
-        return torch.hstack(y_out)
+        y_out = torch.hstack(y_out) 
+        y_out = torch.reshape(y_out, (bs*seq_len, self.vocab_size))
+        return y_out

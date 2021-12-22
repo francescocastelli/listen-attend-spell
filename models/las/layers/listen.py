@@ -1,4 +1,5 @@
 import torch
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class BLSTMLayer(torch.nn.Module):
     """ 
@@ -16,9 +17,14 @@ class BLSTMLayer(torch.nn.Module):
         self.l_blstm = torch.nn.LSTM(input_dim, output_dim // 2, 
                                      bidirectional=True, batch_first=True)
 
-    def forward(self, x):
+    def forward(self, x, input_lengths):
+        # input lengths should be on the cpu
+        input_lengths = input_lengths.cpu()
+
+        x = pack_padded_sequence(x, input_lengths, batch_first=True, enforce_sorted=False)
         blstm_data, _ = self.l_blstm(x)
-        return blstm_data
+        output, out_len = pad_packed_sequence(blstm_data, batch_first=True)
+        return output, out_len
 
 class StackedBLSTMLayer(torch.nn.Module):
     """
@@ -41,13 +47,20 @@ class StackedBLSTMLayer(torch.nn.Module):
         self.layers += [BLSTMLayer(input_size, hidden_size)]
         self.layers += [BLSTMLayer(hidden_size*2, hidden_size) for i in range(0, num_layers)]
 
-    def forward(self, sample):
+    def forward(self, sample, input_lengths):
         bs = sample.shape[0]
 
         next_out = sample
+        next_len = input_lengths
         for l in self.layers:
-            output = l(next_out)
+            output, out_len = l(next_out, next_len)
+            # padding
+            if output.shape[1] % 2:
+                output = torch.nn.functional.pad(output, (0, 0, 0, 1))
+                out_len += 1
+
             # aggreate h elements to reduce time resolution
             next_out = torch.reshape(output, (bs, -1, output.shape[-1]*2))
+            next_len = torch.div(out_len, 2)
 
         return output
