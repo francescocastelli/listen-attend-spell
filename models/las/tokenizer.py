@@ -2,16 +2,22 @@ import string
 import torch
 from collections import defaultdict
 
+pad_value = 0
+
 class Tokenizer():
     def __init__(self):
         # tokens = lower-case lettes, numbers and some punctuation
         tokens = [*string.ascii_lowercase, *range(0, 10), ' ', ',', '.', '\'', ':', 'sos', 'eos']
-        tokens_num = len(tokens)
 
-        # char not in dict gets len(tokens) -> unk
-        self.token_dict = defaultdict(lambda: tokens_num, {c: k for k, c in enumerate(tokens)})
+        self.token_dict = defaultdict(lambda: tokens_num, {c: k for k, c in enumerate(tokens, 1)})
         self.char_dict = {v: k for k, v in self.token_dict.items()}
-        self.char_dict[tokens_num] = 'unk'
+        
+        # char not in dict gets len(tokens) -> unk
+        self.char_dict[len(tokens)] = 'unk'
+        # pad token -> len(char_dict) 
+        self.char_dict[pad_value] = 'pad'
+
+        self.vocabulary_len = len(self.char_dict)
 
     def tokenize(self, target_seq: list):
         token_seq = [self.token_dict[c.lower()] for c in target_seq]
@@ -25,3 +31,4 @@ class Tokenizer():
         string = "".join(char_list[1:-1])
 
         return char_list, string
+    
