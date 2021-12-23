@@ -28,16 +28,42 @@ class BLSTMLayer(torch.nn.Module):
 
 class StackedBLSTMLayer(torch.nn.Module):
     """
+        Pyramidal stack of BLSTM, reference: https://arxiv.org/abs/1508.01211
+        Is a stack of BLSTM layers, where in each successive layer the time 
+        resolution is reduced by a factor of 2. 
+
+        Total time resolution reduction: 2**num_layers
+
+        --- 
+
         Args:
         
-        input_size: H_in
-        hidden_size: H_out
-        num_layers: The number of BLSTM layer on top of the first one
-        
-        ---------
+            input_size: Number of features of the input
 
-        Input: Tensor of shape (N, L, H_in), batch first
-        Ouput: Tensor of shape (N, L/(2**num_layers), H_out)
+            hidden_size: Number of features of the output and hidden layers
+
+            num_layers: The number of BLSTM layer on top of the first one
+        
+        ---
+
+        Shapes:
+
+            input: Tensor of shape (N, L, H_in), batch first
+
+            output: Tensor of shape (N, U, H_out)
+
+
+            where: 
+                * N: batch size
+
+                * L: length of the sequence
+
+                * H_in: input_size
+
+                * H_out: hidden_size
+
+                * U: L/(2**num_layers)
+                
     """
     def __init__(self, input_size, hidden_size, num_layers):
         super(StackedBLSTMLayer, self).__init__()
