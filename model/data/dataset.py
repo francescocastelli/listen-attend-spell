@@ -29,9 +29,6 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         melspec = self.frontend(audio[0])
         # shape: (L, n_mels) where L depends on the length in time
         melspec = torch.t(melspec)
-        # ensure a melspec with even length 
-        if melspec.shape[0] % 2:
-            melspec = torch.nn.functional.pad(melspec, (0, 0, 0, 1))
         
         # tokenize the target seq
         target = sample['seq']

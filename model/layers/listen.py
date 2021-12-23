@@ -49,14 +49,19 @@ class StackedBLSTMLayer(torch.nn.Module):
 
     def forward(self, sample, input_lengths):
         bs = sample.shape[0]
-
         next_out = sample
         next_len = input_lengths
+
+        # padding of the input
+        if next_out.shape[1] % 2:
+            next_out = torch.nn.functional.pad(next_out, (0, 0, 0, 1), mode='reflect')
+            next_len += 1
+
         for l in self.layers:
             output, out_len = l(next_out, next_len)
-            # padding
+            # padding the input of the next layer
             if output.shape[1] % 2:
-                output = torch.nn.functional.pad(output, (0, 0, 0, 1))
+                output = torch.nn.functional.pad(output, (0, 0, 0, 1), mode='reflect')
                 out_len += 1
 
             # aggreate h elements to reduce time resolution
