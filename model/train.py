@@ -1,14 +1,14 @@
+import os
 import torch
 import numpy as np
-import os
 import parameters as param
-from dataset import create_dataset
-from frontends.melspectrogram import MelSpectrogram
-from tokenizer import Tokenizer
-from datautils import collate_fn_pad
-from model import LAS 
 from torchtrainer.trainer import Trainer 
 from torchtrainer.dataloader import TrainerLoader
+from data.dataset import create_dataset
+from data.datautils import collate_fn_pad
+from frontends.melspectrogram import MelSpectrogram
+from tokenizer import Tokenizer
+from model import LAS 
 from argparser import parse_args
 
 def main(args):
@@ -33,8 +33,9 @@ def main(args):
     valid_dataset = create_dataset(valid_txt, param.dataset_dir, tokenizer, frontend)
 
     # model
-    model = LAS(args.name, 64, 512, 
-                512, tokenizer.vocabulary_len, args)
+    model = LAS(args.name, input_size=64, hidden_size=512, encoder_layers=3, 
+                decoder_layers=1, embedding_dim=512, vocabulary_size=tokenizer.vocabulary_len, 
+                args=args)
 
     # dataloader
     dataloader = TrainerLoader(batch_size=args.bs, collate_fn=collate_fn_pad,
