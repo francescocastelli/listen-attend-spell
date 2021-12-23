@@ -81,9 +81,10 @@ class LAS(Model):
         self.loss = torch.nn.CrossEntropyLoss(ignore_index=pad_value)
 
     def define_optimizer_scheduler(self):
-        opt = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.l2)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer=opt, gamma=self.lr_decay, 
-                                                    step_size=5, last_epoch=-1)
+        opt = torch.optim.SGD(self.parameters(), lr=self.lr, weight_decay=self.l2)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=opt, gamma=self.lr_decay, 
+                                                           last_epoch=-1)
+
         return opt, scheduler 
 
     def embeddings_forward(self, sample):
