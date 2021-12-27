@@ -71,6 +71,9 @@ class AttendAndSpell(torch.nn.Module):
                         torch.nn.ReLU(),
                         torch.nn.Linear(self.hidden_size, self.vocab_size))
 
+        # look-up table for char embeddings
+        self.embeddings = torch.nn.Embedding(vocabulary_size, embedding_dim)
+
         self.d = torch.nn.Parameter(torch.empty(0))
 
     def zero_rnn(self, shape):

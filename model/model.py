@@ -76,9 +76,6 @@ class LAS(Model):
         self.decoder = AttendAndSpell(hidden_size, embedding_dim, 
                                       vocabulary_size, decoder_layers)
 
-        # look-up table for char embeddings
-        self.embeddings = torch.nn.Embedding(vocabulary_size, embedding_dim)
-        
         self.loss = torch.nn.CrossEntropyLoss(ignore_index=pad_value)
 
     def define_optimizer_scheduler(self):
@@ -92,22 +89,19 @@ class LAS(Model):
         pass
 
     def forward(self, sample):
-        melspec, input_lengths, y_emb = sample
+        melspec, input_lengths, y_in = sample
 
         encoder_h = self.encoder(melspec, input_lengths)
-        y_out = self.decoder(y_emb, encoder_h)
-        return y_out
+        y_pred = self.decoder(y_in, encoder_h)
+        return y_pred
 
     def training_step(self, sample):
         melspec = sample['melspec']
         input_lengths = sample['lengths']
         y_in, y_out = sample['y_in'], sample['y_out']
 
-        # compute the embeddings for y
-        y_in_emb = self.embeddings(y_in)
-        
         # get output seq 
-        y_pred = self((melspec, input_lengths, y_in_emb)) 
+        y_pred = self((melspec, input_lengths, y_in)) 
         
         # compute loss function
         loss = self.loss(y_pred, y_out.view(-1))
@@ -120,7 +114,6 @@ class LAS(Model):
             self.save_train_stats(loss_train=running_loss)#, char_error_rate_train=cer) 
 
         return loss
-
 
     def validation_step(self, sample):
         melspec = sample['melspec']
