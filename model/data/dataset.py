@@ -32,9 +32,14 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         
         # tokenize the target seq
         target = sample['seq']
-        token_seq = torch.tensor(self.tokenizer.tokenize(target[:-1]))
+        token_seq = self.tokenizer.tokenize(target[:-1])
+
+        # input sequence of the decoder - start with sos 
+        y_in = torch.tensor(token_seq[:-1])
+        # target sequence - ends with eos
+        y_out = torch.tensor(token_seq[1:])
         
-        return {'melspec': melspec, 'token_seq': token_seq}
+        return {'melspec': melspec, 'y_in': y_in, 'y_out': y_out}
 
 def create_dataset(text_path, dataset_dir, tokenizer, frontend):
     df = pd.read_csv(text_path, delimiter=' ', header=None, dtype='object')

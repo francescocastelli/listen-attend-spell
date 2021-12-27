@@ -3,6 +3,7 @@ from tokenizer import pad_value
 from torchtrainer.model import Model 
 from layers.listen import StackedBLSTMLayer
 from layers.attendspell import AttendAndSpell 
+from metrics import char_error_rate
 
 class LAS(Model):
     r"""
@@ -100,21 +101,23 @@ class LAS(Model):
     def training_step(self, sample):
         melspec = sample['melspec']
         input_lengths = sample['lengths']
-        y = sample['token_seq']
+        y_in, y_out = sample['y_in'], sample['y_out']
 
         # compute the embeddings for y
-        y_emb = self.embeddings(y)
+        y_in_emb = self.embeddings(y_in)
         
         # get output seq 
-        y_out = self((melspec, input_lengths, y_emb)) 
+        y_pred = self((melspec, input_lengths, y_in_emb)) 
         
         # compute loss function
-        loss = self.loss(y_out, y.view(-1))
+        loss = self.loss(y_pred, y_out.view(-1))
 
         # metrics
         with torch.no_grad():
+            #y_pred = torch.argmax(y_pred, dim=1)
+            #cer = char_error_rate(y_pred, y.view(-1))
             running_loss = loss * melspec.shape[0]
-            self.save_train_stats(loss_train=running_loss) 
+            self.save_train_stats(loss_train=running_loss)#, char_error_rate_train=cer) 
 
         return loss
 
