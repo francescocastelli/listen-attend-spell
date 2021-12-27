@@ -92,16 +92,18 @@ class AttendAndSpell(torch.nn.Module):
     def forward(self, y, encoder_h):
         bs = y.shape[0]
         seq_len = y.shape[1]
-        h_i, c_i = self.zero_rnn((bs, self.hidden_size))
-        att_i = h_i
 
         h_t, c_t = self.init_out((bs, self.hidden_size))
+        att_i = h_t[0]
         
+        # compute the embeddings for y
+        y_emb = self.embeddings(y)
+
         y_out = []
         # over the seq len
         for i in range(seq_len):
-            rnn_in = torch.cat((y[:, i, :], att_i), dim=-1)
-            h_t[0], c_i  = self.att_rnn(rnn_in, (h_i, c_i))
+            rnn_in = torch.cat((y_emb[:, i, :], att_i), dim=-1)
+            h_t[0], c_t[0]  = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
 
             for i, l in enumerate(self.rnns, 1):
                 h_t[i], c_t[i] = l(h_t[i-1], (h_t[i], c_t[i]))
