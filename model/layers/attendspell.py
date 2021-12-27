@@ -117,16 +117,14 @@ class AttendAndSpell(torch.nn.Module):
         y_out = torch.reshape(y_out, (bs*seq_len, self.vocab_size))
         return y_out
 
-    def inference(self, encoder_h, sos_tok, beam_width=2):
-        seq_len = y.shape[1]
-
+    def inference(self, encoder_h, sos_tok, beam_width=2, max_len=40):
         # zero the first lstm state
         h_t, c_t = self.init_out((bs, self.hidden_size))
         att_i = h_t[0]
 
         hyp_0 = {'seq': [sos_tok], 'score': 0.0, 'h': h_t, 'c': c_t}
         hypothesis = [hyp_0]
-        for i in range(seq_len):
+        for i in range(max_len):
 
             hyps_best = []
             for hyp_i in hypothesis:
