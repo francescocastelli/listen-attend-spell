@@ -116,3 +116,56 @@ class AttendAndSpell(torch.nn.Module):
         y_out = torch.hstack(y_out) 
         y_out = torch.reshape(y_out, (bs*seq_len, self.vocab_size))
         return y_out
+
+    def inference(self, encoder_h, sos_tok, beam_width=2):
+        seq_len = y.shape[1]
+
+        # zero the first lstm state
+        h_t, c_t = self.init_out((bs, self.hidden_size))
+        att_i = h_t[0]
+
+        hyp_0 = {'seq': [sos_tok], 'score': 0.0, 'h': h_t, 'c': c_t}
+        hypothesis = [hyp_0]
+        for i in range(seq_len):
+
+            hyps_best = []
+            for hyp_i in hypothesis:
+                # take the last predicted char in the current hypotesis
+                y_i = hyp_i['seq'][i]
+                # take the hidden state and context of the current hypotesis
+                h_t, c_t = hyp_i['h'], hyp_i['c']
+
+                # compute embedding and feed it to the decoder
+                y_emb = self.embeddings(y_i)
+                
+                # single time step of the decoder
+                rnn_in = torch.cat((y_emb, att_i), dim=-1)
+                h_t[0], c_t[0]  = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
+
+                for i, l in enumerate(self.rnns, 1):
+                    h_t[i], c_t[i] = l(h_t[i-1], (h_t[i], c_t[i]))
+
+                att_i = self.attention(h_t[-1], encoder_h)
+                mlp_in = torch.cat((h_t[-1], att_i), dim=-1)
+                y_pred_i = self.mlp(mlp_in)
+                y_out.append(torch.unsqueeze(y_pred_i, dim=1))
+
+                # compute the score of each char in the vocab
+                y_scores = torch.nn.functional.log_softmax(y_out, dim=-1)
+                y_top_scores, y_top_indices = torch.topk(y_scores, beam_width)
+
+                # add the top scores at the current hypothesis
+                for b in range(beam_width):
+                    char, score = y_scores[y_top_indices[b]], y_top_scores[b]
+                    seq = hyp_i['seq'].append(char)
+                    score = hyp_i['score'] + score
+                    hyp = {'h': h_t, 'c': c_t, 'seq': seq, 'score': score}
+                    hyps_best.append(hyp)
+          
+                hyps_best = sorted(hyps_best, key=lambda d: d['score'], reverse=True)[:beam_width] 
+            
+            # keep only the best hypothesis
+            hypothesis = hyps_best
+
+        # end of beam search
+        return hypothesis
