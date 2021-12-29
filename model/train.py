@@ -35,7 +35,7 @@ def main(args):
     # model
     model = LAS(args.name, input_size=64, hidden_size=512, encoder_layers=3, 
                 decoder_layers=1, embedding_dim=512, vocabulary_size=tokenizer.vocabulary_len, 
-                args=args)
+                tokenizer=tokenizer, args=args)
 
     # dataloader
     dataloader = TrainerLoader(batch_size=args.bs, collate_fn=collate_fn_pad,
