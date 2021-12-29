@@ -117,24 +117,24 @@ class AttendAndSpell(torch.nn.Module):
         y_out = torch.reshape(y_out, (bs*seq_len, self.vocab_size))
         return y_out
 
-    def inference(self, encoder_h, sos_tok, beam_width=2, max_len=40):
+    def inference(self, encoder_h, sos_tok, beam_width=2, max_len=150):
         # zero the first lstm state
-        h_t, c_t = self.init_out((bs, self.hidden_size))
+        h_t, c_t = self.init_out((1, self.hidden_size))
         att_i = h_t[0]
 
         hyp_0 = {'seq': [sos_tok], 'score': 0.0, 'h': h_t, 'c': c_t}
         hypothesis = [hyp_0]
-        for i in range(max_len):
+        for t in range(max_len):
 
             hyps_best = []
             for hyp_i in hypothesis:
                 # take the last predicted char in the current hypotesis
-                y_i = hyp_i['seq'][i]
+                y_i = hyp_i['seq'][t]
                 # take the hidden state and context of the current hypotesis
                 h_t, c_t = hyp_i['h'], hyp_i['c']
 
                 # compute embedding and feed it to the decoder
-                y_emb = self.embeddings(y_i)
+                y_emb = self.embeddings(torch.unsqueeze(torch.tensor(y_i), dim=0))
                 
                 # single time step of the decoder
                 rnn_in = torch.cat((y_emb, att_i), dim=-1)
@@ -146,7 +146,8 @@ class AttendAndSpell(torch.nn.Module):
                 att_i = self.attention(h_t[-1], encoder_h)
                 mlp_in = torch.cat((h_t[-1], att_i), dim=-1)
                 y_pred_i = self.mlp(mlp_in)
-                y_out.append(torch.unsqueeze(y_pred_i, dim=1))
+                #y_out = torch.unsqueeze(y_pred_i, dim=1)
+                y_out = y_pred_i[0]
 
                 # compute the score of each char in the vocab
                 y_scores = torch.nn.functional.log_softmax(y_out, dim=-1)
@@ -154,9 +155,13 @@ class AttendAndSpell(torch.nn.Module):
 
                 # add the top scores at the current hypothesis
                 for b in range(beam_width):
-                    char, score = y_scores[y_top_indices[b]], y_top_scores[b]
-                    seq = hyp_i['seq'].append(char)
-                    score = hyp_i['score'] + score
+                    char, score = y_top_indices[b], y_top_scores[b].item()
+                    seq = [*hyp_i['seq'], char.item()]
+                    # update the score and normalized by the seq len
+                    score = (hyp_i['score'] + score) / len(seq)
+
+                    # TODO: if the predicted char is <eos>, remove the hyp from the beam
+                    # and add it to the final set
                     hyp = {'h': h_t, 'c': c_t, 'seq': seq, 'score': score}
                     hyps_best.append(hyp)
           
