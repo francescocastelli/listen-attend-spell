@@ -2,8 +2,6 @@ import string
 import torch
 from collections import defaultdict
 
-pad_value = 0
-
 class Tokenizer():
     r"""
     Tokenizer contains a dictionary of tokens, where each token is a character. In particular we consider:
@@ -21,11 +19,13 @@ class Tokenizer():
 
         self.token_dict = defaultdict(lambda: tokens_num, {c: k for k, c in enumerate(tokens, 1)})
         self.char_dict = {v: k for k, v in self.token_dict.items()}
-        
+
         # char not in dict gets len(tokens) -> unk
         self.char_dict[len(tokens)] = 'unk'
-        # pad token 
-        self.char_dict[pad_value] = 'pad'
+
+        # set constant pad value
+        self.pad_value = 0
+        self.char_dict[self.pad_value] = 'pad'
 
         self.vocabulary_len = len(self.char_dict)
 
@@ -57,8 +57,17 @@ class Tokenizer():
            Returns: 
                 list of chars corresponding to the token seq
         """
-        char_list = [self.char_dict[t.item()] for t in token_seq]
+        char_list = [self.char_dict[t] for t in token_seq]
         string = "".join(char_list[1:-1])
 
         return char_list, string
     
+
+    def get_pad_token(self):
+        return self.pad_value
+
+    def get_sos_token(self):
+        return self.token_dict['sos']
+
+    def get_eos_token(self):
+        return self.token_dict['eos']
