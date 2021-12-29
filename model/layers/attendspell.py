@@ -99,10 +99,14 @@ class AttendAndSpell(torch.nn.Module):
         # compute the embeddings for y
         y_emb = self.embeddings(y)
 
+        # TODO: During training, instead of always feeding in the ground truth 
+        # for next step prediction, we sample from our previous character
+        # distribution (10% sample rate) and use that as the inputs in the 
+        # next step predictions
         y_out = []
         # over the seq len
-        for i in range(seq_len):
-            rnn_in = torch.cat((y_emb[:, i, :], att_i), dim=-1)
+        for t in range(seq_len):
+            rnn_in = torch.cat((y_emb[:, t, :], att_i), dim=-1)
             h_t[0], c_t[0]  = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
 
             for i, l in enumerate(self.rnns, 1):
