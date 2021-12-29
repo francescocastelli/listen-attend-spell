@@ -1,12 +1,11 @@
-from tokenizer import Tokenizer
-from model import LAS
-from data.dataset import create_dataset
-from frontends.melspectrogram import MelSpectrogram
-import parameters as param
 import os
 import torch
 import numpy as np
-
+from data.dataset import create_dataset
+from frontends.melspectrogram import MelSpectrogram
+import utils.parameters as param
+from utils.tokenizer import Tokenizer
+from model import LAS
 
 def main():
     model_path = "/nas/home/fcastelli/asr/model/results/las/28-12-21_11:40:53/las.pt"

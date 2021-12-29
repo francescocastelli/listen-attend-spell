@@ -1,15 +1,15 @@
 import os
 import torch
 import numpy as np
-import parameters as param
 from torchtrainer.trainer import Trainer 
 from torchtrainer.dataloader import TrainerLoader
 from data.dataset import create_dataset
 from data.datautils import collate_fn_pad
 from frontends.melspectrogram import MelSpectrogram
-from tokenizer import Tokenizer
+from utils.tokenizer import Tokenizer
+from utils.argparser import parse_args
+import utils.parameters as param
 from model import LAS 
-from argparser import parse_args
 
 def main(args):
     train_txt = os.path.join(param.text_path, "train.txt")
