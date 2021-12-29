@@ -1,5 +1,4 @@
 import torch
-from tokenizer import pad_value
 from torchtrainer.model import Model 
 from layers.listen import StackedBLSTMLayer
 from layers.attendspell import AttendAndSpell 
@@ -65,18 +64,26 @@ class LAS(Model):
 
     """
     def __init__(self, name, input_size, hidden_size, encoder_layers, decoder_layers,
-                 embedding_dim, vocabulary_size, args):
+                 embedding_dim, vocabulary_size, tokenizer, inference=False, args=None):
         super().__init__(name=name)
-
-        self.lr = args.lr
-        self.l2 = args.l2
-        self.lr_decay = args.lr_decay
         
+        if not inference and args is None:
+            raise ValueError("You must specify some args for training")
+
+        if not inference:
+            self.lr = args.lr
+            self.l2 = args.l2
+            self.lr_decay = args.lr_decay
+        
+        self.tokenizer = tokenizer
+
+        # seq2seq model
         self.encoder = StackedBLSTMLayer(input_size, hidden_size, encoder_layers)
         self.decoder = AttendAndSpell(hidden_size, embedding_dim, 
                                       vocabulary_size, decoder_layers)
 
-        self.loss = torch.nn.CrossEntropyLoss(ignore_index=pad_value)
+        self.loss = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.get_pad_token())
+        
 
     def define_optimizer_scheduler(self):
         opt = torch.optim.SGD(self.parameters(), lr=self.lr, weight_decay=self.l2)
@@ -116,6 +123,7 @@ class LAS(Model):
         return loss
 
     def validation_step(self, sample):
+        """
         melspec = sample['melspec']
         input_lengths = sample['lengths']
         y = sample['token_seq']
@@ -134,3 +142,19 @@ class LAS(Model):
         self.save_train_stats(loss_valid=running_loss) 
 
         return loss
+        """
+        pass
+
+    def inference_step(self, melspec, seq_len):
+        self.eval()
+        with torch.no_grad():
+            # encoder step
+            encoder_h = self.encoder(melspec, seq_len)
+
+            # beam seach
+            hypothesis = self.decoder.inference(encoder_h, 42)
+            pred_seq = [hyp['seq'] for hyp in hypothesis]
+            pred_decoded = [self.tokenizer.decode_tokens(s)[1] for s in pred_seq]
+
+        return pred_decoded
+
