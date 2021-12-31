@@ -1,8 +1,8 @@
 import torch
 from torchtrainer.model import Model 
-from layers.listen import StackedBLSTMLayer
-from layers.attendspell import AttendAndSpell 
-from metrics import char_error_rate
+from model.layers.listen import StackedBLSTMLayer
+from model.layers.attendspell import AttendAndSpell 
+from utils.tokenizer import pad_value
 
 class LAS(Model):
     r"""
@@ -82,7 +82,7 @@ class LAS(Model):
         self.decoder = AttendAndSpell(hidden_size, embedding_dim, 
                                       vocabulary_size, decoder_layers)
 
-        self.loss = torch.nn.CrossEntropyLoss(ignore_index=self.tokenizer.get_pad_token())
+        self.loss = torch.nn.CrossEntropyLoss(ignore_index=pad_value)
         
 
     def define_optimizer_scheduler(self):
@@ -109,7 +109,7 @@ class LAS(Model):
 
         # get output seq 
         y_pred = self((melspec, input_lengths, y_in)) 
-        
+
         # compute loss function
         loss = self.loss(y_pred, y_out.view(-1))
 
@@ -152,7 +152,8 @@ class LAS(Model):
             encoder_h = self.encoder(melspec, seq_len)
 
             # beam seach
-            hypothesis = self.decoder.inference(encoder_h, 42)
+            sos_tok = self.tokenizer.get_sos_token()
+            hypothesis = self.decoder.inference(encoder_h, sos_tok)
             pred_seq = [hyp['seq'] for hyp in hypothesis]
             pred_decoded = [self.tokenizer.decode_tokens(s)[1] for s in pred_seq]
 

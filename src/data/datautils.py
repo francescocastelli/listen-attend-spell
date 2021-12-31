@@ -1,8 +1,9 @@
 import torch
 from torch.utils.data.dataloader import default_collate
 from torch.nn.utils.rnn import pad_sequence
-from tokenizer import pad_value
+from utils.tokenizer import pad_value
 
+# define the collate_fn_pad function
 def collate_fn_pad(batch):
     melspecs = [d['melspec'] for d in batch]
     y_in = [d['y_in'] for d in batch]

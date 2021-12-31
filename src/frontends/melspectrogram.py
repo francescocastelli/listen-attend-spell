@@ -8,7 +8,6 @@ class MelSpectrogram(torch.nn.Module):
         super(MelSpectrogram, self).__init__()
         
         self.pre_emphasis = 0.97
-        self.power = power
         self.melspec = torchaudio.transforms.MelSpectrogram(sample_rate=sr, n_fft=n_fft, win_length=win_len, 
                                              hop_length=hop_len, f_min=f_min, f_max=f_max, pad=pad, 
                                              n_mels=n_mels, window_fn=window_fn, power=power, 

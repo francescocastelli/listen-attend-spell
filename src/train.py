@@ -3,13 +3,13 @@ import torch
 import numpy as np
 from torchtrainer.trainer import Trainer 
 from torchtrainer.dataloader import TrainerLoader
+from model.las import LAS 
+from frontends.melspectrogram import MelSpectrogram
 from data.dataset import create_dataset
 from data.datautils import collate_fn_pad
-from frontends.melspectrogram import MelSpectrogram
 from utils.tokenizer import Tokenizer
 from utils.argparser import parse_args
 import utils.parameters as param
-from model import LAS 
 
 def main(args):
     train_txt = os.path.join(param.text_path, "train.txt")
