@@ -117,7 +117,7 @@ class LAS(Model):
         with torch.no_grad():
             #y_pred = torch.argmax(y_pred, dim=1)
             #cer = char_error_rate(y_pred, y.view(-1))
-            running_loss = loss * melspec.shape[0]
+            running_loss = loss
             self.save_train_stats(loss_train=running_loss)#, char_error_rate_train=cer) 
 
         return loss

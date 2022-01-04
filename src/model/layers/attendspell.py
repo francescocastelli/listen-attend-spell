@@ -121,12 +121,14 @@ class AttendAndSpell(torch.nn.Module):
         y_out = torch.reshape(y_out, (bs*seq_len, self.vocab_size))
         return y_out
 
-    def inference(self, encoder_h, sos_tok, beam_width=2, max_len=150):
+    def inference(self, encoder_h, sos_tok, eos_tok, beam_width=2, max_len=150):
         # zero the first lstm state
         h_t, c_t = self.init_out((1, self.hidden_size))
         att_i = h_t[0]
 
-        hyp_0 = {'seq': [sos_tok], 'score': 0.0, 'h': h_t, 'c': c_t}
+        final_hyp = []
+
+        hyp_0 = {'seq': [sos_tok], 'score': 0.0, 'h': h_t, 'c': c_t, 'att': att_i}
         hypothesis = [hyp_0]
         for t in range(max_len):
 
@@ -135,23 +137,23 @@ class AttendAndSpell(torch.nn.Module):
                 # take the last predicted char in the current hypotesis
                 y_i = hyp_i['seq'][t]
                 # take the hidden state and context of the current hypotesis
-                h_t, c_t = hyp_i['h'], hyp_i['c']
+                h_t, c_t, att_t = hyp_i['h'], hyp_i['c'], hyp_i['att']
 
                 # compute embedding and feed it to the decoder
                 y_emb = self.embeddings(torch.unsqueeze(torch.tensor(y_i), dim=0))
                 
                 # single time step of the decoder
-                rnn_in = torch.cat((y_emb, att_i), dim=-1)
-                h_t[0], c_t[0]  = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
+                rnn_in = torch.cat((y_emb, att_t), dim=-1)
+                h_t[0], c_t[0] = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
 
                 for i, l in enumerate(self.rnns, 1):
                     h_t[i], c_t[i] = l(h_t[i-1], (h_t[i], c_t[i]))
 
-                att_i = self.attention(h_t[-1], encoder_h)
-                mlp_in = torch.cat((h_t[-1], att_i), dim=-1)
-                y_pred_i = self.mlp(mlp_in)
+                att_t = self.attention(h_t[-1], encoder_h)
+                mlp_in = torch.cat((h_t[-1], att_t), dim=-1)
+                y_pred_t = self.mlp(mlp_in)
                 #y_out = torch.unsqueeze(y_pred_i, dim=1)
-                y_out = y_pred_i[0]
+                y_out = y_pred_t[0]
 
                 # compute the score of each char in the vocab
                 y_scores = torch.nn.functional.log_softmax(y_out, dim=-1)
@@ -164,15 +166,19 @@ class AttendAndSpell(torch.nn.Module):
                     # update the score and normalized by the seq len
                     score = (hyp_i['score'] + score) / len(seq)
 
-                    # TODO: if the predicted char is <eos>, remove the hyp from the beam
-                    # and add it to the final set
-                    hyp = {'h': h_t, 'c': c_t, 'seq': seq, 'score': score}
+                    hyp = {'h': h_t, 'c': c_t, 'att': att_t, 'seq': seq, 'score': score}
                     hyps_best.append(hyp)
           
                 hyps_best = sorted(hyps_best, key=lambda d: d['score'], reverse=True)[:beam_width] 
             
+            for hyp in hyps_best: 
+                if hyp['seq'][-1] == eos_tok:
+                    final_hyp.append(hyp)
+                else: 
+                    hypothesis.append(hyp)
+
             # keep only the best hypothesis
             hypothesis = hyps_best
 
         # end of beam search
-        return hypothesis
+        return final_hyp 
