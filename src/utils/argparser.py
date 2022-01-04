@@ -21,7 +21,9 @@ def parse_args():
     parser.add_argument("--console_logs", help="wheter to print stats during training", 
                         action="store_true")
     parser.add_argument("--logs", help="wheter to save logs and model", action="store_true")
-    parser.add_argument("--embeddings", help="wheter to save embeddings", action="store_true")
+    parser.add_argument("--ckpt", help="use the checkpoint stored in param.ckpt_path", action="store_true")
+    parser.add_argument("--ckpt_rate", help="number of epochs on which ckpt are stored", type=int, default=0) 
+    parser.add_argument("--embeddings_num", help="num of embeddings to store", type=int, default=0)
 
     # train args 
     parser.add_argument("--distributed", help="train on multiple gpus", action="store_true")
