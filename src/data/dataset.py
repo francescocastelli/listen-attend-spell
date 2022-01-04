@@ -45,5 +45,6 @@ def create_dataset(text_path, dataset_dir, tokenizer, frontend):
     df = pd.read_csv(text_path, delimiter=' ', header=None, dtype='object')
     df.columns = ['speaker_id', 'chapter_id', 'audio_id', 'seq', 'dataset']
 
-    return LibriSpeechDataset(df, dataset_dir, tokenizer, frontend)
+    seq_len = df['seq'].apply(lambda row: len(row)+1)
+    return LibriSpeechDataset(df, dataset_dir, tokenizer, frontend), seq_len
     

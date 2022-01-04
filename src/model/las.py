@@ -2,7 +2,7 @@ import torch
 from torchtrainer.model import Model 
 from model.layers.listen import StackedBLSTMLayer
 from model.layers.attendspell import AttendAndSpell 
-from utils.tokenizer import pad_value
+from utils.tokenizer import pad_value, sos_value, eos_value
 
 class LAS(Model):
     r"""
@@ -145,15 +145,14 @@ class LAS(Model):
         """
         pass
 
-    def inference_step(self, melspec, seq_len):
+    def inference_step(self, melspec, seq_len, beam_width=2):
         self.eval()
         with torch.no_grad():
             # encoder step
             encoder_h = self.encoder(melspec, seq_len)
 
             # beam seach
-            sos_tok = self.tokenizer.get_sos_token()
-            hypothesis = self.decoder.inference(encoder_h, sos_tok)
+            hypothesis = self.decoder.inference(encoder_h, sos_value, eos_value, beam_width)
             pred_seq = [hyp['seq'] for hyp in hypothesis]
             pred_decoded = [self.tokenizer.decode_tokens(s)[1] for s in pred_seq]
 

@@ -3,6 +3,8 @@ import torch
 from collections import defaultdict
 
 pad_value = 0
+eos_value = 1
+sos_value = 2
 
 class Tokenizer():
     r"""
@@ -17,16 +19,18 @@ class Tokenizer():
     """
     def __init__(self):
         # tokens = lower-case lettes, numbers and some punctuation
-        tokens = [*string.ascii_lowercase, *range(0, 10), ' ', ',', '.', '\'', ':', 'sos', 'eos']
+        tokens = [*string.ascii_lowercase, *range(0, 10), ' ', ',', '.', '\'', ':']
 
-        self.token_dict = defaultdict(lambda: tokens_num, {c: k for k, c in enumerate(tokens, 1)})
+        self.token_dict = defaultdict(lambda: len(tokens), {c: k for k, c in enumerate(tokens, 3)})
         self.char_dict = {v: k for k, v in self.token_dict.items()}
 
         # char not in dict gets len(tokens) -> unk
         self.char_dict[len(tokens)] = 'unk'
 
-        # set constant pad value
+        # set constant special tokens
         self.char_dict[pad_value] = 'pad'
+        self.char_dict[sos_value] = 'sos'
+        self.char_dict[eos_value] = 'eos'
 
         self.vocabulary_len = len(self.char_dict)
 
@@ -43,8 +47,8 @@ class Tokenizer():
                 with sos and eos at the beginning and end
         """
         token_seq = [self.token_dict[c.lower()] for c in seq]
-        token_seq.insert(0, self.token_dict['sos'])
-        token_seq.append(self.token_dict['eos'])
+        token_seq.insert(0, sos_value)
+        token_seq.append(eos_value)
 
         return token_seq
 
@@ -58,14 +62,7 @@ class Tokenizer():
            Returns: 
                 list of chars corresponding to the token seq
         """
-        char_list = [self.char_dict[t] for t in token_seq]
-        string = "".join(char_list[1:-1])
+        char_list = [self.char_dict[t] for t in token_seq if t != sos_value and t != eos_value]
+        string = "".join(char_list)
 
         return char_list, string
-    
-
-    def get_sos_token(self):
-        return self.token_dict['sos']
-
-    def get_eos_token(self):
-        return self.token_dict['eos']
