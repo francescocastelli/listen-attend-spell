@@ -26,6 +26,10 @@ def parse_args():
     parser.add_argument("--ckpt_rate", help="number of epochs on which ckpt are stored", type=int, default=0) 
     parser.add_argument("--embeddings_num", help="num of embeddings to store", type=int, default=0)
 
+    # ckpt
+    parser.add_argument("--ckpt_dir", type=str, help="date dir of the ckpt", default=None)
+    parser.add_argument("--ckpt_name", type=str, help="name of the ckpt", default=None)
+
     # train args 
     parser.add_argument("--distributed", help="train on multiple gpus", action="store_true")
     parser.add_argument("--multitrain", help="if you want to train on multiple config", action="store_true")

@@ -16,9 +16,8 @@ def main(args):
     valid_txt = os.path.join(param.text_path, "dev.txt")
 
     ckpt_path = None
-    if args.ckpt:
-        date = "01-01-22_12:35:11"
-        ckpt_path = os.path.join(param.log_dir, args.name, date, args.name+'.pt')
+    if args.ckpt_dir and args.ckpt_name:
+        ckpt_path = os.path.join(param.log_dir, args.name, args.ckpt_dir, 'checkpoints', args.ckpt_name+'.pt')
 
     # frontend
     win_len=int(round(args.sr*args.win_len_s))

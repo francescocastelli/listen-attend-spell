@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import torch
 import numpy as np
@@ -5,18 +7,19 @@ from data.dataset import create_dataset
 from frontends.melspectrogram import MelSpectrogram
 import utils.parameters as param
 from utils.tokenizer import Tokenizer
-from model import LAS
+from model.las import LAS
 
 def main():
-    model_path = "/nas/home/fcastelli/asr/model/results/las/28-12-21_11:40:53/las.pt"
-    valid_txt = os.path.join(param.text_path, "dev.txt")
+    model_path = "/nas/home/fcastelli/asr/src/model/results/las/12-01-22_10:47:20/checkpoints/las_ckpt_epoch_150.pt"
+    valid_txt = os.path.join(param.text_path, "train_100.txt")
 
     tokenizer = Tokenizer()
     model = LAS('las', input_size=64, hidden_size=512, encoder_layers=3,
                 decoder_layers=1, embedding_dim=512, 
                 tokenizer=tokenizer, inference=True, vocabulary_size=tokenizer.vocabulary_len)
 
-    model.load_state_dict(torch.load(model_path))
+    model_dict = torch.load(model_path, map_location='cuda:0')
+    model.load_state_dict(model_dict['model_state_dict'])
     model.eval()
 
     # frontend
@@ -39,7 +42,7 @@ def main():
                               power=power, normalized=False)
 
 
-    valid_dataset = create_dataset(valid_txt, param.dataset_dir, tokenizer, frontend)
+    valid_dataset, _ = create_dataset(valid_txt, param.dataset_dir, tokenizer, frontend)
     valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=1)
     valid_it = iter(valid_loader)
 
@@ -48,7 +51,7 @@ def main():
     seq_len = torch.tensor(melspec.shape[1])
     seq_len = torch.unsqueeze(seq_len, dim=0)
 
-    pred_seq = model.inference_step(melspec, seq_len)
+    pred_seq = model.inference_step(melspec, seq_len, beam_width=10)
 
     _, true_seq = tokenizer.decode_tokens(y_out.tolist()[0])
     print(f'ground truth: {true_seq}')
