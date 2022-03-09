@@ -36,6 +36,8 @@ class LAS(Model):
 
             vocabulary_size: Number of possible characters
 
+            sampling_rate: sampling rate used in attend and spell layer
+
             args: All the other parameters of the model (lr, l2, lr_decay)
 
 
@@ -64,7 +66,8 @@ class LAS(Model):
 
     """
     def __init__(self, name, input_size, hidden_size, encoder_layers, decoder_layers,
-                 embedding_dim, vocabulary_size, tokenizer, inference=False, args=None):
+                 embedding_dim, vocabulary_size, tokenizer, sampling_rate, 
+                 inference=False, args=None):
         super().__init__(name=name)
         
         if not inference and args is None:
@@ -80,7 +83,7 @@ class LAS(Model):
         # seq2seq model
         self.encoder = StackedBLSTMLayer(input_size, hidden_size, encoder_layers)
         self.decoder = AttendAndSpell(hidden_size, embedding_dim, 
-                                      vocabulary_size, decoder_layers)
+                                      vocabulary_size, decoder_layers, sampling_rate)
 
         self.loss = torch.nn.CrossEntropyLoss(ignore_index=pad_value)
         

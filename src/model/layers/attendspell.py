@@ -43,6 +43,11 @@ class AttendAndSpell(torch.nn.Module):
         
         hidden_size: H_out
         embedding_dim: Embedding size of the char in the input sequence
+        vocabulary_size: Size of the vocabulary used for tokenization
+        num_layers: Number of rnns layers 
+        sampling_rate: Probability of sampling, at each time step, a token 
+                       from the previous token distribution instead of the
+                       ground truth. Default: 0.1
         
         ---------
 
@@ -54,7 +59,7 @@ class AttendAndSpell(torch.nn.Module):
 
         Ouput: The sequence of hidden states from the output of the attention lstm, shape: (bs, S, hidden_size)
     """
-    def __init__(self, hidden_size, embedding_dim, vocabulary_size, num_layers):
+    def __init__(self, hidden_size, embedding_dim, vocabulary_size, num_layers, sampling_rate=0.1):
         super(AttendAndSpell, self).__init__()
         
         self.vocab_size = vocabulary_size
@@ -74,7 +79,9 @@ class AttendAndSpell(torch.nn.Module):
         # look-up table for char embeddings
         self.embeddings = torch.nn.Embedding(vocabulary_size, embedding_dim)
 
+        # device
         self.d = torch.nn.Parameter(torch.empty(0))
+        self.sampling_rate = sampling_rate
 
     def zero_rnn(self, shape):
        return torch.zeros(shape, device=self.d.device), torch.zeros(shape, device=self.d.device) 
@@ -93,20 +100,28 @@ class AttendAndSpell(torch.nn.Module):
         bs = y.shape[0]
         seq_len = y.shape[1]
 
+        # During training, instead of always feeding in the ground truth 
+        # for next step prediction, we sample from our previous character
+        # distribution (10% sample rate) and use that as the inputs in the 
+        # next step predictions
+        sr_sampling = torch.rand(seq_len, device=self.d.device, requires_grad=False) > self.sampling_rate
+
         h_t, c_t = self.init_out((bs, self.hidden_size))
         att_i = h_t[0]
         
         # compute the embeddings for y
         y_emb = self.embeddings(y)
 
-        # TODO: During training, instead of always feeding in the ground truth 
-        # for next step prediction, we sample from our previous character
-        # distribution (10% sample rate) and use that as the inputs in the 
-        # next step predictions
         y_out = []
         # over the seq len
         for t in range(seq_len):
-            rnn_in = torch.cat((y_emb[:, t, :], att_i), dim=-1)
+            # sample from previous char distribution or ground truth
+            if (t > 0) and (sr_sampling[t]):
+                y_in = self.embeddings(torch.argmax(y_pred_i, dim=-1))
+            else:
+                y_in = y_emb[:, t, :]
+
+            rnn_in = torch.cat((y_in, att_i), dim=-1)
             h_t[0], c_t[0]  = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
 
             for i, l in enumerate(self.rnns, 1):

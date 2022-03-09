@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, help="learning rate", required=True)
     parser.add_argument("--l2", type=float, help="weight decay", required=True)
     parser.add_argument("--lr_decay", type=float, help="gamma for exponential lr decay", required=True)
+    parser.add_argument("--sampling_rate", type=float, help="prob for attend and spell layer", required=True)
     parser.add_argument("--epochs", type=int, help="total number of epochs", required=True)
 
     # model

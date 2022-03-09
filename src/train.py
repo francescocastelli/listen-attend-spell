@@ -40,7 +40,7 @@ def main(args):
     # model
     model = LAS(args.name, input_size=64, hidden_size=512, encoder_layers=3, 
                 decoder_layers=1, embedding_dim=512, 
-                vocabulary_size=tokenizer.vocabulary_len, 
+                vocabulary_size=tokenizer.vocabulary_len, sampling_rate=args.sampling_rate,
                 tokenizer=tokenizer, args=args)
 
     # dataloader
