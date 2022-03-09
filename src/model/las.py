@@ -3,6 +3,7 @@ from torchtrainer.model import Model
 from model.layers.listen import StackedBLSTMLayer
 from model.layers.attendspell import AttendAndSpell 
 from utils.tokenizer import pad_value, sos_value, eos_value
+from torchdistance import editdistance
 
 class LAS(Model):
     r"""
@@ -118,10 +119,16 @@ class LAS(Model):
 
         # metrics
         with torch.no_grad():
-            #y_pred = torch.argmax(y_pred, dim=1)
-            #cer = char_error_rate(y_pred, y.view(-1))
-            running_loss = loss
-            self.save_train_stats(loss_train=running_loss)#, char_error_rate_train=cer) 
+            y_pred = y_pred.view(y_in.shape[0], -1, y_pred.shape[-1])
+            y_pred = torch.argmax(y_pred, dim=-1)
+
+            # -1 bc we do not consider eos char 
+            ref_seq_lengths = sample['ref_seq_len'] - 1
+
+            cer = editdistance(y_pred, y_out, eos_value)
+            # per-batch mean char error rate
+            cer = torch.div(cer.view(-1), ref_seq_lengths).mean()
+            self.save_train_stats(loss_train=loss, char_error_rate_train=cer) 
 
         return loss
 

@@ -13,6 +13,7 @@ def collate_fn_pad(batch):
 
     # get sequence lengths
     lengths = torch.tensor([m.shape[0] for m in melspecs])
+    seq_lengths = torch.tensor([y.shape[0] for y in y_out])
     # pad the melspecs 
     pad_melspecs = pad_sequence(melspecs, batch_first=True)
     # pad the sequences of tokens
@@ -22,7 +23,7 @@ def collate_fn_pad(batch):
     b = {}
     # insert the stacked melspec in the batch with their original lengths
     b['melspec'], b['lengths'] = pad_melspecs, lengths
-    b['y_in'], b['y_out'] = pad_y_in, pad_y_out
+    b['y_in'], b['y_out'], b['ref_seq_len'] = pad_y_in, pad_y_out, seq_lengths
 
     return b #, lengths, mask
 
