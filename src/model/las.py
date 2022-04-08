@@ -124,8 +124,10 @@ class LAS(Model):
 
             # -1 bc we do not consider eos char 
             ref_seq_lengths = sample['ref_seq_len'] - 1
+            for b, l in enumerate(ref_seq_lengths):
+                y_pred[b, l:] = pad_value 
 
-            cer = editdistance(y_pred, y_out, eos_value)
+            cer = editdistance(y_pred, y_out, pad_value)
             # per-batch mean char error rate
             cer = torch.div(cer.view(-1), ref_seq_lengths).mean()
             self.save_train_stats(loss_train=loss, char_error_rate_train=cer) 

@@ -17,7 +17,7 @@ def collate_fn_pad(batch):
     # pad the melspecs 
     pad_melspecs = pad_sequence(melspecs, batch_first=True)
     # pad the sequences of tokens
-    pad_y_in = pad_sequence(y_in, batch_first=True, padding_value=eos_value)
+    pad_y_in = pad_sequence(y_in, batch_first=True, padding_value=pad_value)
     pad_y_out = pad_sequence(y_out, batch_first=True, padding_value=pad_value)
 
     b = {}
