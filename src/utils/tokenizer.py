@@ -20,12 +20,13 @@ class Tokenizer():
     def __init__(self):
         # tokens = lower-case lettes, numbers and some punctuation
         tokens = [*string.ascii_lowercase, *range(0, 10), ' ', ',', '.', '\'', ':']
+        self.unk_val = len(tokens)
 
-        self.token_dict = defaultdict(lambda: len(tokens), {c: k for k, c in enumerate(tokens, 3)})
+        self.token_dict = defaultdict(self._token_dict_init, {c: k for k, c in enumerate(tokens, 3)})
         self.char_dict = {v: k for k, v in self.token_dict.items()}
 
         # char not in dict gets len(tokens) -> unk
-        self.char_dict[len(tokens)] = 'unk'
+        self.char_dict[self.unk_val] = 'unk'
 
         # set constant special tokens
         self.char_dict[pad_value] = 'pad'
@@ -34,6 +35,9 @@ class Tokenizer():
 
         self.vocabulary_len = len(self.char_dict)
 
+
+    def _token_dict_init(self):
+            return self.unk_val
 
     def tokenize(self, seq: list):
         r"""
