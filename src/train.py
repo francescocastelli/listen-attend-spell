@@ -47,7 +47,7 @@ def main(args):
     valid_sampler = SamplerBlockShuffleByLen(valid_len, args.bs)
     dataloader = TrainerLoader(batch_size=args.bs, collate_fn=collate_fn_pad,
                                train_sampler=train_sampler, valid_sampler=valid_sampler,
-                               num_workers=args.w, shuffle=True)
+                               num_workers=args.w, shuffle=False)
 
     trainer = Trainer(model=model, train_dataset=train_dataset, 
                      valid_dataset=valid_dataset, 
