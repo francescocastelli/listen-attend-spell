@@ -63,7 +63,7 @@ class AttendAndSpell(torch.nn.Module):
         super(AttendAndSpell, self).__init__()
         
         self.vocab_size = vocabulary_size
-        self.att_rnn = torch.nn.LSTMCell(hidden_size + embedding_dim, hidden_size)
+        self.att_rnn = torch.nn.LSTMCell(embedding_dim, hidden_size)
         self.rnns = torch.nn.ModuleList(
                       [torch.nn.LSTMCell(hidden_size, hidden_size) for _ in range(num_layers)]
                      )
@@ -121,13 +121,14 @@ class AttendAndSpell(torch.nn.Module):
             else:
                 y_in = y_emb[:, t, :]
 
-            rnn_in = torch.cat((y_in, att_i), dim=-1)
-            h_t[0], c_t[0]  = self.att_rnn(rnn_in, (h_t[0], c_t[0]))
+            #rnn_in = torch.cat((y_in, att_i), dim=-1)
+            h_t[0], c_t[0]  = self.att_rnn(y_in, (att_i, c_t[0]))
+            att_i = self.attention(h_t[0], encoder_h)
 
+            h_t[0] = att_i
             for i, l in enumerate(self.rnns, 1):
                 h_t[i], c_t[i] = l(h_t[i-1], (h_t[i], c_t[i]))
 
-            att_i = self.attention(h_t[-1], encoder_h)
             mlp_in = torch.cat((h_t[-1], att_i), dim=-1)
             y_pred_i = self.mlp(mlp_in)
             y_out.append(torch.unsqueeze(y_pred_i, dim=1))
@@ -186,14 +187,12 @@ class AttendAndSpell(torch.nn.Module):
           
                 hyps_best = sorted(hyps_best, key=lambda d: d['score'], reverse=True)[:beam_width] 
             
+            hypothesis = []
             for hyp in hyps_best: 
                 if hyp['seq'][-1] == eos_tok:
                     final_hyp.append(hyp)
                 else: 
                     hypothesis.append(hyp)
-
-            # keep only the best hypothesis
-            hypothesis = hyps_best
 
         # end of beam search
         return final_hyp 
